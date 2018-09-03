@@ -10,7 +10,7 @@ function [newAdjacency,ratio,J] = removeLargestRatio(n, F, newAdjacency, numAgen
             %if Expectation_noco(n-1,k) < Expectation_coop(n-1,k)
                 for l = 1:numAgents
                     if Adjacency(l,k) == 1
-                        %J(l,k) = (d(n,k) - u(:,k)'*phi(:,l))^2;
+                        %J(l,k) = (d(n,k) - u(:,k)'*phi(:,l))^2; 
                         f = f + 1;
                         if ~any(l == attackers)
                             J(l,k) = sum((D(:,k) - U(:,:,k) * phi(:,l)).^2)/storedNum;
@@ -31,12 +31,14 @@ function [newAdjacency,ratio,J] = removeLargestRatio(n, F, newAdjacency, numAgen
                 if f - 1 >= F
                     for i = 1:F
                         maxR = find(ratio(:,k)==max(ratio(:,k))) ;
+                        maxR = maxR(1);
                         newAdjacency(maxR,k) = 0; 
                         ratio(maxR,k) = 0;
                     end
                 else
                     for i = 1:f - 1
-                        maxR = find(ratio(:,k)==max(ratio(:,k))) ;
+                        maxR = find(ratio(:,k)==max(ratio(:,k)));
+                        maxR = maxR(1);
                         newAdjacency(maxR,k) = 0; 
                         ratio(maxR,k) = 0;
                     end

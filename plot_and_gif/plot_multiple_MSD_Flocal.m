@@ -137,11 +137,16 @@ for F = 0:1:numF
         plot(mag2db(MSD_ncop), 'linewidth',1);
         hold on;
         mylgd{1} = ['Noncooperative LMS'];
+        plot(mag2db(MSD_coop), 'linewidth',1);
+        hold on;
+        set(gca,'FontSize',15);
+        mylgd{2} = ['DLMSAW/R-DLMSAW, F = ', num2str(F)];
+    else 
+        plot(mag2db(MSD_coop), 'linewidth',1);
+        hold on;
+        set(gca,'FontSize',15);
+        mylgd{F+2} = ['R-DLMSAW, F = ', num2str(F)];
     end
-    plot(mag2db(MSD_coop), 'linewidth',1);
-    hold on;
-    set(gca,'FontSize',15);
-    mylgd{F+2} = ['F-local, F = ', num2str(F)];
     if F == numF
         gca = legend(mylgd,'NorthEastOutside');
         set(gca,'FontSize',12);

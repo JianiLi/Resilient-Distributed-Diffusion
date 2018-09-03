@@ -6,19 +6,19 @@ clear; close all; clc
 rng('default');
 
 %% PARAMETERS
-numAgents = 100;
+numAgents = 16;
 numTaps = 2;		% channel number
 %numPoints = 5050;
-numPoints = 5050;
+numPoints = 10500;
 Mu = 0.01;          % step size
-niu = 0.01;         % forgetting factor
+niu = 0.02;         % forgetting factor
 w = rand(numTaps,numAgents);
 w_noco = w;
 w0 = [0.1 0.9; 0.1 0.9];
 phi = zeros(numTaps,numAgents);
 gamma2 = zeros(numAgents,numAgents);
 A = zeros(numAgents,numAgents);
-sensingRange = 0.16;
+sensingRange = 0.5;
 
 %% DETECTION PARAMETERS 
 MSD_coop = zeros(numPoints-1,1); 
@@ -35,11 +35,11 @@ beta = 0.1;
 
 %% ATTACKER SETTINGS
 %attackers = [24 37 63 88];
-%attackers = [];
-attackers = [24 33 35 37 42 63 88];
+attackers = [6];
+%attackers = [6 11];
 %attackers = [12 14 17 32 36 39 63 66 68 82 85 88 ];
 attackers_new = [];
-ra = 0.001;
+ra = 0.0005;
 attacker_phi = zeros(numTaps, numAgents);
 w0_attacker = [0.5;0.5];          % attacker's goal state
 Agents = 1:numAgents;
@@ -48,13 +48,13 @@ wAverageMatrix = [];
 
 %% INPUTS (GAUSSIAN)
 mu_x = 0;
-sigma_x2 = 0.8 + 0.4*rand(numAgents,1);
+sigma_x2 = 0.3 + 0.0*rand(numAgents,1);
 x = zeros(numPoints,numAgents);
 for k = 1:numAgents
     x(:,k) = mvnrnd(mu_x, sigma_x2(k), numPoints);
 end
 
-sigma_v2 = 0.0+0.05*rand(numAgents,1);
+sigma_v2 = 0.15+0.05*rand(numAgents,1);
 v = zeros(numPoints,numAgents);
 for k = 1:numAgents
     v(:,k) = mvnrnd(0, sigma_v2(k), numPoints);
@@ -63,7 +63,7 @@ end
 % NETWORK TOPOLOGY
 [Adjacency, AgentSet, group1, group2] = getAdjacency(numAgents, sensingRange);
 AdjacencyMatrix = Adjacency;
-plotNetworkTopology(1, AgentSet, w0, AdjacencyMatrix, group1, group2, attackers, attackers_new, numTaps);
+%plotNetworkTopology(1, AgentSet, w0, AdjacencyMatrix, group1, group2, attackers, attackers_new, numTaps);
 
 d = zeros(numPoints,numAgents);
 for k = group1
@@ -88,11 +88,12 @@ error_A = zeros(numPoints,numAgents,numTaps);
 error = zeros(numPoints,numAgents,numTaps);
 phi_last_iter = phi;
 difference_error_A_with_error = zeros(numPoints,numAgents,numTaps);
+estimated_w = w;
 
 
 %% DIFFUSION LMS ALGORITHM
 for n = numTaps : numPoints
-    n
+    
     newAdjacency = Adjacency;
 
     if mod(n,1000) == 0 || n == numPoints
@@ -111,7 +112,6 @@ for n = numTaps : numPoints
 
     phi_last_iter = phi;
     
-    
     for k = normalAgents
         u(:,k) = x(n:-1:n-numTaps+1,k);     % select part of training input
         % Cooperative state
@@ -119,6 +119,7 @@ for n = numTaps : numPoints
         e(n,k) = d(n,k)-h(n,k);             % error
         phi(:,k) = w(:,k) + Mu*( u(:,k)*e(n,k) );
         error(n,k,:) = Mu*( u(:,k)*e(n,k) );
+        
         % non-cooperative state
         h_noco(n,k) = u(:,k)' * w_noco(:,k);    % hypothsis function
         e_noco(n,k) = d(n,k)-h_noco(n,k);    % error
@@ -132,32 +133,38 @@ for n = numTaps : numPoints
     %estimated_A_bef_norm = estimated_A + 0.02*(phi(:,[1, 2, 3, 11, 12])'*error_A);
     %estimated_A = estimated_A_bef_norm / sum(estimated_A_bef_norm);
     
-    for k = normalAgents
-        for a = attackers
-            phi_last_iter(:,a) = attacker_phi(:,k);
+    if n > 500
+        for k = normalAgents
+            for a = attackers
+                phi_last_iter(:,a) = attacker_phi(:,k);
+            end
+            error_A(n,k,:) = phi(:,k) - phi_last_iter(:, [find(Adjacency(:,k)==1)]) * cell2mat(estimated_A(:,k));
+            %error_A(n,k,:) = phi(:,k) - phi_last_iter(:, [find(Adjacency(:,k)==1)]) * cell2mat(estimated_A(:,k)) - (phi(:,k) - phi_last_iter(:,a));
+            difference_error_A_with_error(n,k,:) = error(n,k,:) - error_A(n,k,:);
+            estimated_A_bef_norm = cell2mat(estimated_A(:,k)) + 0.01*phi_last_iter(:, [find(Adjacency(:,k)==1)])'*reshape(error_A(n,k,:),2,1);
+            estimated_A_bef_norm([find(estimated_A_bef_norm < 0)]) = 0;
+            estimated_A(:,k) = mat2cell( estimated_A_bef_norm/sum(estimated_A_bef_norm), sz(k), 1);
         end
-        error_A(n,k,:) = phi(:,k) - phi_last_iter(:, [find(Adjacency(:,k)==1)]) * cell2mat(estimated_A(:,k));
-        difference_error_A_with_error(n,k,:) = error(n,k,:) - error_A(n,k,:);
-        estimated_A_bef_norm = cell2mat(estimated_A(:,k)) + 0.01*phi_last_iter(:, [find(Adjacency(:,k)==1)])'*reshape(error_A(n,k,:),2,1);
-        estimated_A_bef_norm([find(estimated_A_bef_norm < 0)]) = 0;
-        estimated_A(:,k) = mat2cell( estimated_A_bef_norm/sum(estimated_A_bef_norm), sz(k), 1);
     end
     
     if size(attackers,2) ~= 0
        for k = normalAgents
            % attacker_phi(:,k) = w(:,k) + ra*(w0_attacker-w(:,k));
-           estimated_w = phi(:,k) - reshape(error_A(n,k,:),2,1);
+           estimated_w(:,k) = phi(:,k) - reshape(error_A(n,k,:),2,1);
+           %estimated_w(:,k) = phi_last_iter(:, [find(Adjacency(:,k)==1)]) * cell2mat(estimated_A(:,k));
            %estimated_w = phi(:,k) - Mu*( u(:,k)*e(n,k) );
-           attacker_phi(:,k) = estimated_w + ra*(w0_attacker-estimated_w);
+           attacker_phi(:,k) = estimated_w(:,k) + ra*(w0_attacker-estimated_w(:,k));
        end
     end
 
     gamma2 = UpdateGamma2(normalAgents, attackers, attacker_phi, numAgents, gamma2, newAdjacency, w, phi, niu);
 
-     if n >numTaps
-             [newAdjacency,ratio,J] = removeLargest_new_resilient(n, 4, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
-     Expectation_noco, Expectation_coop, gamma2 );
-     end
+    if n >numTaps
+            %[newAdjacency,ratio,J] = removeLargestRatio(n, 1, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+    %Expectation_noco, Expectation_coop, gamma2 );
+    %[newAdjacency,ratio,J] = removeLargest_new_resilient(n, 1, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+    %Expectation_noco, Expectation_coop, gamma2 );
+    end
     
     A = UpdateWeight(normalAgents, numAgents, gamma2, newAdjacency);
     w = UpdateW(attackers, numAgents, A, w,  phi, attacker_phi, w0_attacker);
@@ -194,9 +201,10 @@ box on;
 figure(3)
 %plot(error_node1(1,:))
 %hold on;
+line_color = hsv(numAgents);
 for k = Agents
-    plot(difference_error_A_with_error(:,k,1))
+    plot(difference_error_A_with_error(:,k,1),'Color', line_color(k,:))
     hold on;
-    mylgd{k} = ['error', num2str(k)];
+    mylgd{k} = ['error', num2str(k)];    
 end
 legend(mylgd);

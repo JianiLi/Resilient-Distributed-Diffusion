@@ -14,8 +14,7 @@ w0 = [0.1 0.9; 0.1 0.9];
 phi = zeros(numTaps,numAgents);
 gamma2 = zeros(numAgents,numAgents);
 A = zeros(numAgents,numAgents);
-%sensingRange = 0.16;
-sensingRange = 0.25;
+sensingRange = 0.16;
 
 %% DETECTION PARAMETERS
 MSD_coop = zeros(numPoints-1,1); 
@@ -31,7 +30,8 @@ beta = 0.1;
 
 
 %% ATTACKER SETTINGS
-attackers = [24 37 53 63 65 67 88];
+%attackers = [24 37 63 88];
+attackers = [2 11 24 33 35 37 53 55 63 88];
 %attackers = [4 12 16 18 20 22 24 27 34 37 39 44 45 48 50 52 55 59 62 63 72 74 78 88 91 84 86 90];
 attackers_new = [];
 ra = [0.002, 0.002];
@@ -85,7 +85,7 @@ d = d+v;
 %% DIFFUSION LMS ALGORITHM
 for n = numTaps : numPoints
     
-    
+    n
     newAdjacency = Adjacency;
 
     if  mod(n,1000) == 0 || n == numPoints
@@ -131,9 +131,10 @@ for n = numTaps : numPoints
     %gamma2 = UpdateGamma2(normalAgents, attackers, attacker_phi, numAgents, gamma2, Adjacency, w_noco_old, phi_noco, niu);
     
     if n >numTaps
-        [newAdjacency,ratio,J] = removeLargestRatio(n, 5, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+        %[newAdjacency,ratio,J] = removeLargestRatio(n, 1, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+    %Expectation_noco, Expectation_coop, gamma2 );
+        [newAdjacency,ratio,J] = removeLargest_new_resilient(n, 2, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
     Expectation_noco, Expectation_coop, gamma2 );
-        %[newAdjacency, J] = removeLargestCostOfRemainingNeighbors(0.01, 3, gamma2, AdjacencyMatrix, newAdjacency, numAgents, attackers, D, U, phi, storedNum, attacker_phi);
     end
     
     A = UpdateWeight(normalAgents, numAgents, gamma2, newAdjacency);

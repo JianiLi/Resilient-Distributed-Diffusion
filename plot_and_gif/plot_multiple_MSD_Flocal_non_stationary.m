@@ -1,7 +1,7 @@
 clear; close all; clc
 numF = 5;
-%for F = 0:1:numF
-F = 2
+for F = 0:1:numF
+%F = 2
     rng('default');
     eta_matrix = [];
     falseAlarm_matrix = [];
@@ -117,7 +117,7 @@ F = 2
         if mod(n,1000) == 0 || n == numPoints
             %update adjacency matrix
             AdjacencyMatrix = (A>=0.01) & Adjacency;
-            plotNetworkTopology(n, AgentSet, w0, AdjacencyMatrix, group1, group2, attacker, attacker_new, numTaps)
+            %plotNetworkTopology(n, AgentSet, w0, AdjacencyMatrix, group1, group2, attacker, attacker_new, numTaps)
         end
        
 
@@ -275,22 +275,27 @@ F = 2
     figure(5)
     if F == 0
         set (gcf,'Position',[0,0,450,450], 'color','w');
-        set(gca,'XTick', 0:1000:5000)
+        set(gca,'XTick', [0:1000:5000])
         plot(mag2db(MSD_ncop), 'linewidth',1);
         hold on;
-        mylgd{1} = 'Noncooperative LMS';
+        mylgd{1} = ['Noncooperative LMS'];
+        plot(mag2db(MSD_coop), 'linewidth',1);
+        hold on;
+        set(gca,'FontSize',15);
+        mylgd{2} = ['DLMSAW/R-DLMSAW, F = ', num2str(F)];
+    else 
+        plot(mag2db(MSD_coop), 'linewidth',1);
+        hold on;
+        set(gca,'FontSize',15);
+        mylgd{F+2} = ['R-DLMSAW, F = ', num2str(F)];
     end
-    plot(mag2db(MSD_coop), 'linewidth',1);
-    hold on;
-    set(gca,'FontSize',15);
-    mylgd{F+2} = ['F-local, F = ', num2str(F)];
     if F == numF
         gca = legend(mylgd,'NorthEastOutside');
         set(gca,'FontSize',12);
         xlabel('Iteration $i$', 'interpreter','latex','fontsize',20);ylabel('MSD(dB)', 'interpreter','latex','fontsize',20);
         box on;
     end
-%end
+end
 
 % 
 % figure(3);
