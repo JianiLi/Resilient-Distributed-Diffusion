@@ -9,7 +9,7 @@ rng('default');
 numAgents = 100;
 numTaps = 2;		% channel number
 %numPoints = 5050;
-numPoints = 5050;
+numPoints = 5000;
 Mu = 0.01;          % step size
 niu = 0.01;         % forgetting factor
 w = rand(numTaps,numAgents);
@@ -23,6 +23,7 @@ sensingRange = 0.16;
 %% DETECTION PARAMETERS 
 MSD_coop = zeros(numPoints-1,1); 
 MSD_ncop = zeros(numPoints-1,1);
+difference_w = zeros(numPoints-1,numAgents);
 storedNum = 100;
 D = zeros(storedNum, numAgents);
 U = zeros(storedNum,numTaps, numAgents);
@@ -36,7 +37,8 @@ beta = 0.1;
 %% ATTACKER SETTINGS
 %attackers = [24 37 63 88];
 %attackers = [];
-attackers = [24 33 35 37 42 63 88];
+%attackers = [24 33 35 37 42 63 88];
+attackers = [2 11 24 33 35 37 53 55 63 88];
 %attackers = [12 14 17 32 36 39 63 66 68 82 85 88 ];
 attackers_new = [];
 ra = 0.001;
@@ -64,6 +66,7 @@ end
 [Adjacency, AgentSet, group1, group2] = getAdjacency(numAgents, sensingRange);
 AdjacencyMatrix = Adjacency;
 plotNetworkTopology(1, AgentSet, w0, AdjacencyMatrix, group1, group2, attackers, attackers_new, numTaps);
+pause(1)
 
 d = zeros(numPoints,numAgents);
 for k = group1
@@ -146,17 +149,20 @@ for n = numTaps : numPoints
     if size(attackers,2) ~= 0
        for k = normalAgents
            % attacker_phi(:,k) = w(:,k) + ra*(w0_attacker-w(:,k));
-           estimated_w = phi(:,k) - reshape(error_A(n,k,:),2,1);
+           estimated_w_k = phi(:,k) - reshape(error_A(n,k,:),2,1);
+           difference_w(n,k) = norm(estimated_w_k - w(:,k));
            %estimated_w = phi(:,k) - Mu*( u(:,k)*e(n,k) );
-           attacker_phi(:,k) = estimated_w + ra*(w0_attacker-estimated_w);
+           attacker_phi(:,k) = estimated_w_k + ra*(w0_attacker-estimated_w_k);
        end
     end
 
     gamma2 = UpdateGamma2(normalAgents, attackers, attacker_phi, numAgents, gamma2, newAdjacency, w, phi, niu);
 
      if n >numTaps
-             [newAdjacency,ratio,J] = removeLargest_new_resilient(n, 4, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
-     Expectation_noco, Expectation_coop, gamma2 );
+        [newAdjacency,ratio,J] = removeLargestRatio(n, 4, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+    Expectation_noco, Expectation_coop, gamma2 );
+         %    [newAdjacency,ratio,J] = removeLargest_new_resilient(n, 4, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+  %  Expectation_noco, Expectation_coop, gamma2 );
      end
     
     A = UpdateWeight(normalAgents, numAgents, gamma2, newAdjacency);
@@ -171,14 +177,15 @@ for n = numTaps : numPoints
     [MSD_coop, MSD_ncop] = ComputeMSD(group1, numAgents, attackers, MSD_coop, MSD_ncop, n, w0, w, w_noco, normalAgents);
     
     [D, U] = updateStoredStreamingData(d(n,:),u, D, U);
-    wAverageMatrix = getwAverage(numAgents, wAverageMatrix, attackers, Adjacency, w);    
+    wAverageMatrix = getwAverage(numAgents, wAverageMatrix, attackers, Adjacency, w); 
+    
 end
 
 
 %% PLOT
 % MSD
 figure(2)
-set (gcf,'Position',[0,0,450,450], 'color','w');
+set(gcf,'Position',[0,0,450,450], 'color','w');
 set(gcf,'color','white');
 set(gca,'XTick', [0:1000:5000])
 plot(mag2db(MSD_ncop), 'linewidth',1);
@@ -186,17 +193,31 @@ hold on;
 plot(mag2db(MSD_coop), 'linewidth',1);
 hold on;
 set(gca,'FontSize',15);
-gca = legend('Noncooperative LMS','DLMSAW', 'interpreter','latex', 'fontsize',20);
-set(gca,'FontSize',20);
+L = legend('Noncooperative LMS','DLMSAW');
+set(L,'Interpreter','latex')
+set(L,'FontSize',20);
 xlabel('Iteration $i$', 'interpreter','latex','fontsize',20);ylabel('MSD(dB)', 'interpreter','latex','fontsize',20);
 box on;
 
-figure(3)
-%plot(error_node1(1,:))
-%hold on;
-for k = Agents
-    plot(difference_error_A_with_error(:,k,1))
-    hold on;
-    mylgd{k} = ['error', num2str(k)];
-end
-legend(mylgd);
+% figure(3)
+% %plot(error_node1(1,:))
+% %hold on;
+% for k = Agents
+%     plot(difference_error_A_with_error(:,k,1))
+%     hold on;
+%     mylgd{k} = ['error', num2str(k)];
+% end
+% legend(mylgd);
+
+figure(4)
+set(gcf,'Position',[0,0,450,450], 'color','w');
+set(gcf,'color','white');
+set(gca,'XTick', [0:1000:5000])
+H = plot(difference_w, 'linewidth',1);
+hold on;
+set(gca,'FontSize',15);
+%L = legend(H,'all normal agents');
+set(L,'Interpreter','latex')
+set(L,'FontSize',20);
+xlabel('Iteration $i$', 'interpreter','latex','fontsize',20);ylabel('$$|\hat{\boldmath{w}}_{k,i} - \boldmath{w}_{k,i}|$$', 'interpreter','latex','fontsize',20);
+box on;

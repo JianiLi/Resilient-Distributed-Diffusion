@@ -28,46 +28,46 @@ function [newAdjacency,ratio,J] = removeLargest_new_resilient(n, F, newAdjacency
                         end
                     end
 
-                    ratio(k,k) = 0;
-                    gamma2(k,k) = 0;
+                    ratio(k,k) = 0;  % new_ratio = sum(ratioWithoutRemoveList) independent of ratio(k,k)  but do not set it to be 0 the algorithm does not work, weird!
+                    %gamma2(k,k) = 0;
                 
-                if F == 1
-                    if f - 1 >= F
-                        for i = 1:F
-                            minRatio = Inf;
-                            for l = 1:numAgents
-                                if Adjacency(l,k) == 1 && l ~= k
-                                    if l == 1
-                                        ratioWithoutl = [ratio(2:numAgents,k)];
-                                        gamma2Withoutl = [gamma2(2:numAgents, k)];
-                                        gamma2Withoutl(gamma2Withoutl  == 0) = [];
-                                    elseif l == numAgents
-                                        ratioWithoutl = [ratio(1:numAgents-1, k)];
-                                        gamma2Withoutl = [gamma2(1: numAgents-1, k)];
-                                        gamma2Withoutl(gamma2Withoutl  == 0) = [];
-                                    else
-                                        ratioWithoutl = [ratio(1:l-1,k); ratio(l+1:numAgents,k)];
-                                        gamma2Withoutl = [gamma2(1:l-1,k); gamma2(l+1:numAgents,k)];
-                                        gamma2Withoutl(gamma2Withoutl  == 0) = [];
-                                    end
-                                    new_ratio = sum(ratioWithoutl) ./ sum(1./gamma2Withoutl).^2;
-                                    if new_ratio < minRatio
-                                        minRatio = new_ratio;
-                                        removeR = l;
-                                    end        
-                                end
-                            end
-                            newAdjacency(removeR,k) = 0; 
-                            Adjacency(removeR,k) = 0;
-                            ratio(removeR,k) = 0;
-                            gamma2(removeR,k) = 0;
-                        end
-                    else
-                        newAdjacency(Adjacency(:,k)~=0,k) = 0; 
-                        Adjacency(Adjacency(:,k)~=0,k) = 0;
-                    end
-                    
-                else
+%                 if F == 1
+%                     if f - 1 >= F
+%                         for i = 1:F
+%                             minRatio = Inf;
+%                             for l = 1:numAgents
+%                                 if Adjacency(l,k) == 1 && l ~= k
+%                                     if l == 1
+%                                         ratioWithoutl = [ratio(2:numAgents,k)];
+%                                         gamma2Withoutl = [gamma2(2:numAgents, k)];
+%                                         gamma2Withoutl(gamma2Withoutl  == 0) = [];
+%                                     elseif l == numAgents
+%                                         ratioWithoutl = [ratio(1:numAgents-1, k)];
+%                                         gamma2Withoutl = [gamma2(1: numAgents-1, k)];
+%                                         gamma2Withoutl(gamma2Withoutl  == 0) = [];
+%                                     else
+%                                         ratioWithoutl = [ratio(1:l-1,k); ratio(l+1:numAgents,k)];
+%                                         gamma2Withoutl = [gamma2(1:l-1,k); gamma2(l+1:numAgents,k)];
+%                                         gamma2Withoutl(gamma2Withoutl  == 0) = [];
+%                                     end
+%                                     new_ratio = sum(ratioWithoutl) ./ sum(1./gamma2Withoutl).^2;
+%                                     if new_ratio < minRatio
+%                                         minRatio = new_ratio;
+%                                         removeR = l;
+%                                     end        
+%                                 end
+%                             end
+%                             newAdjacency(removeR,k) = 0; 
+%                             Adjacency(removeR,k) = 0;
+%                             ratio(removeR,k) = 0;
+%                             gamma2(removeR,k) = 0;
+%                         end
+%                     else
+%                         newAdjacency(Adjacency(:,k)~=0,k) = 0; 
+%                         Adjacency(Adjacency(:,k)~=0,k) = 0;
+%                     end
+%                     
+%                 else
                     if f - 1 > F
                         minRatio = Inf;
                         neighborsOfk = find(Adjacency(:,k)~=0);
@@ -80,8 +80,8 @@ function [newAdjacency,ratio,J] = removeLargest_new_resilient(n, F, newAdjacency
                             gamma2WithoutRemoveList = gamma2(:,k);
                             gamma2WithoutRemoveList(removeList) = 0;
                             gamma2WithoutRemoveList(gamma2WithoutRemoveList  == 0) = [];
-                            %new_ratio = sum(ratioWithoutRemoveList) ./ sum(1./gamma2WithoutRemoveList).^2;
-                            new_ratio = sum(ratioWithoutRemoveList);
+                            new_ratio = sum(ratioWithoutRemoveList) ./ (sum(1./gamma2WithoutRemoveList)).^2;
+                            %new_ratio = sum(ratioWithoutRemoveList);
                             if new_ratio <= minRatio
                                 minRatio = new_ratio;
                                 actualRemoveList = removeList;
@@ -91,10 +91,9 @@ function [newAdjacency,ratio,J] = removeLargest_new_resilient(n, F, newAdjacency
                     else
                         newAdjacency(Adjacency(:,k)~=0,k) = 0;       
                     end
-                end
-                
-            newAdjacency(k,k) = 1;     
+                %end
             end
+            newAdjacency(k,k) = 1;     
         end
             
 end

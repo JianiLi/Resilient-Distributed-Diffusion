@@ -5,7 +5,7 @@ rng('default');
 numAgents = 100;
 numTaps = 2;		% channel number
 %numPoints = 2005;
-numPoints = 5000;
+numPoints = 1000;
 Mu = 0.01;          % step size
 niu = 0.01;         % forgetting factor
 w = rand(numTaps,numAgents);
@@ -133,7 +133,7 @@ for n = numTaps : numPoints
     if n >numTaps
         %[newAdjacency,ratio,J] = removeLargestRatio(n, 1, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
     %Expectation_noco, Expectation_coop, gamma2 );
-        [newAdjacency,ratio,J] = removeLargest_new_resilient(n, 2, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+        [newAdjacency,ratio,J] = removeLargest_new_resilient(n, 4, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
     Expectation_noco, Expectation_coop, gamma2 );
     end
     
