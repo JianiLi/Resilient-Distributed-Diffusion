@@ -5,7 +5,7 @@ rng('default');
 numAgents = 100;
 numTaps = 2;		% channel number
 %numPoints = 2005;
-numPoints = 1000;
+numPoints = 5000;
 Mu = 0.01;          % step size
 niu = 0.01;         % forgetting factor
 w = rand(numTaps,numAgents);
@@ -31,12 +31,14 @@ beta = 0.1;
 
 %% ATTACKER SETTINGS
 %attackers = [24 37 63 88];
-attackers = [2 11 24 33 35 37 53 55 63 88];
+attackers = [2 11 24 33 37 53 55 63 88];
 %attackers = [4 12 16 18 20 22 24 27 34 37 39 44 45 48 50 52 55 59 62 63 72 74 78 88 91 84 86 90];
 attackers_new = [];
 ra = [0.002, 0.002];
+%ra = [0.000002, 0.000002];
 attacker_phi = zeros(2,numTaps, numAgents);
 w0_attacker = [0.5;0.5];          % attacker's goal state
+%w0_attacker = [500; 500];
 Agents = 1:numAgents;
 normalAgents = setdiff(Agents,attackers);
 wAverageMatrix = [];
@@ -131,10 +133,10 @@ for n = numTaps : numPoints
     %gamma2 = UpdateGamma2(normalAgents, attackers, attacker_phi, numAgents, gamma2, Adjacency, w_noco_old, phi_noco, niu);
     
     if n >numTaps
-        %[newAdjacency,ratio,J] = removeLargestRatio(n, 1, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
-    %Expectation_noco, Expectation_coop, gamma2 );
-        [newAdjacency,ratio,J] = removeLargest_new_resilient(n, 4, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
-    Expectation_noco, Expectation_coop, gamma2 );
+      %  [newAdjacency,ratio,J] = removeLargestRatio(n, 3, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+  %  Expectation_noco, Expectation_coop, gamma2 );
+      %  [newAdjacency,ratio,J] = removeLargest_new_resilient(n, 3, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+   % Expectation_noco, Expectation_coop, gamma2 );
     end
     
     A = UpdateWeight(normalAgents, numAgents, gamma2, newAdjacency);

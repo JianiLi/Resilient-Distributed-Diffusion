@@ -37,8 +37,9 @@ beta = 0.1;
 %% ATTACKER SETTINGS
 %attackers = [24 37 63 88];
 %attackers = [];
-%attackers = [24 33 35 37 42 63 88];
-attackers = [2 11 24 33 35 37 53 55 63 88];
+%attackers = [2 24 33  37 42 63 88];
+attackers = [24 37 33 42 63 88];
+%attackers = [2 11 24 33 35 37 53 55 63 88];
 %attackers = [12 14 17 32 36 39 63 66 68 82 85 88 ];
 attackers_new = [];
 ra = 0.001;
@@ -56,7 +57,7 @@ for k = 1:numAgents
     x(:,k) = mvnrnd(mu_x, sigma_x2(k), numPoints);
 end
 
-sigma_v2 = 0.0+0.05*rand(numAgents,1);
+sigma_v2 = 0.00+0.05*rand(numAgents,1);
 v = zeros(numPoints,numAgents);
 for k = 1:numAgents
     v(:,k) = mvnrnd(0, sigma_v2(k), numPoints);
@@ -140,7 +141,7 @@ for n = numTaps : numPoints
             phi_last_iter(:,a) = attacker_phi(:,k);
         end
         error_A(n,k,:) = phi(:,k) - phi_last_iter(:, [find(Adjacency(:,k)==1)]) * cell2mat(estimated_A(:,k));
-        difference_error_A_with_error(n,k,:) = error(n,k,:) - error_A(n,k,:);
+        difference_error_A_with_error(n,k,:) = error(n,k,: ) - error_A(n,k,:);
         estimated_A_bef_norm = cell2mat(estimated_A(:,k)) + 0.01*phi_last_iter(:, [find(Adjacency(:,k)==1)])'*reshape(error_A(n,k,:),2,1);
         estimated_A_bef_norm([find(estimated_A_bef_norm < 0)]) = 0;
         estimated_A(:,k) = mat2cell( estimated_A_bef_norm/sum(estimated_A_bef_norm), sz(k), 1);
@@ -159,10 +160,10 @@ for n = numTaps : numPoints
     gamma2 = UpdateGamma2(normalAgents, attackers, attacker_phi, numAgents, gamma2, newAdjacency, w, phi, niu);
 
      if n >numTaps
-        [newAdjacency,ratio,J] = removeLargestRatio(n, 4, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
-    Expectation_noco, Expectation_coop, gamma2 );
-         %    [newAdjacency,ratio,J] = removeLargest_new_resilient(n, 4, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
-  %  Expectation_noco, Expectation_coop, gamma2 );
+       % [newAdjacency,ratio,J] = removeLargestRatio(n, 2, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+   % Expectation_noco, Expectation_coop, gamma2 );
+        %    [newAdjacency,ratio,J] = removeLargest_new_resilient(n, 2, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+  %Expectation_noco, Expectation_coop, gamma2 );
      end
     
     A = UpdateWeight(normalAgents, numAgents, gamma2, newAdjacency);
@@ -219,5 +220,5 @@ set(gca,'FontSize',15);
 %L = legend(H,'all normal agents');
 set(L,'Interpreter','latex')
 set(L,'FontSize',20);
-xlabel('Iteration $i$', 'interpreter','latex','fontsize',20);ylabel('$$|\hat{\boldmath{w}}_{k,i} - \boldmath{w}_{k,i}|$$', 'interpreter','latex','fontsize',20);
+xlabel('Iteration $i$', 'interpreter','latex','fontsize',20);ylabel('$$|\hat{\boldmath{w}}_{k,i} - \boldmath{w}_{k,i}|$$', 'interpreter','latex','fontsize',22);
 box on;
