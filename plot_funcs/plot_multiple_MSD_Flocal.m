@@ -107,9 +107,11 @@ for F = 0:1:numF
         %gamma2 = UpdateGamma2(normalAgents, attackers, attacker_phi, numAgents, gamma2, Adjacency, w_noco_old, phi_noco, niu);
 
         if n >numTaps
-                [newAdjacency,ratio,J] = removeLargestRatio(n, F, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
-        Expectation_noco, Expectation_coop, gamma2 );
+               % [newAdjacency,ratio,J] = removeLargestRatio(n, F, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+       % Expectation_noco, Expectation_coop, gamma2 );
             %[newAdjacency, J] = removeLargestCostOfRemainingNeighbors(0.01, 3, gamma2, AdjacencyMatrix, newAdjacency, numAgents, attackers, D, U, phi, storedNum, attacker_phi);
+        [newAdjacency,ratio,J] = removeLargest_new_resilient(n, F, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+                Expectation_noco, Expectation_coop, gamma2 );
         end
 
         A = UpdateWeight(normalAgents, numAgents, gamma2, newAdjacency);
@@ -147,10 +149,11 @@ for F = 0:1:numF
         set(gca,'FontSize',15);
         mylgd{F+2} = ['R-DLMSAW, F = ', num2str(F)];
     end
+    set(gca,'TickLabelInterpreter','latex', 'FontSize',15);
     if F == numF
-        gca = legend(mylgd,'NorthEastOutside');
-        set(gca,'FontSize',12);
-        xlabel('Iteration $i$', 'interpreter','latex','fontsize',20);ylabel('MSD(dB)', 'interpreter','latex','fontsize',20);
+        L = legend(mylgd);
+        set(L,'FontSize',15,'interpreter','latex');
+        xlabel('Iteration $i$', 'interpreter','latex','fontsize',25);ylabel('MSD(dB)', 'interpreter','latex','fontsize',25);
         box on;
     end
 end

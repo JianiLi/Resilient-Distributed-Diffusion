@@ -14,12 +14,14 @@ w0 = [0.1 0.9; 0.1 0.9];
 phi = zeros(numTaps,numAgents);
 gamma2 = zeros(numAgents,numAgents);
 A = zeros(numAgents,numAgents);
-%sensingRange = 0.16;
-sensingRange = 0.25;
+sensingRange = 0.16;
+%sensingRange = 0.25;
 
 %% DETECTION PARAMETERS
 MSD_coop = zeros(numPoints-1,1); 
 MSD_ncop = zeros(numPoints-1,1);
+W1 = zeros(numPoints-1,numAgents);
+W2 = zeros(numPoints-1,numAgents);
 storedNum = 100;
 D = zeros(storedNum, numAgents);
 U = zeros(storedNum,numTaps, numAgents);
@@ -31,8 +33,9 @@ beta = 0.1;
 
 
 %% ATTACKER SETTINGS
-attackers = [24 37 53 63 65 67 88];
-%attackers = [4 12 16 18 20 22 24 27 34 37 39 44 45 48 50 52 55 59 62 63 72 74 78 88 91 84 86 90];
+%attackers = [24 37 53 63 65 67 88];
+attackers = [24 37 63 88];
+%attackers = [];
 attackers_new = [];
 ra = [0.002, 0.002];
 attacker_phi = zeros(2,numTaps, numAgents);
@@ -43,13 +46,15 @@ wAverageMatrix = [];
 
 %% INPUTS (GAUSSIAN)
 mu_x = 0;
+%sigma_x2 = 0.8 + 0.4*rand(numAgents,1);
 sigma_x2 = 0.8 + 0.4*rand(numAgents,1);
+sigma_v2 = 0.15+0.05*rand(numAgents,1);
 x = zeros(numPoints,numAgents);
 for k = 1:numAgents
     x(:,k) = mvnrnd(mu_x, sigma_x2(k), numPoints);
 end
 
-sigma_v2 = 0.15+0.05*rand(numAgents,1);
+%sigma_v2 = 0.15+0.05*rand(numAgents,1);
 v = zeros(numPoints,numAgents);
 for k = 1:numAgents
     v(:,k) = mvnrnd(0, sigma_v2(k), numPoints);
@@ -59,7 +64,7 @@ end
 [Adjacency, AgentSet, group1, group2] = getAdjacency(numAgents, sensingRange);
 AdjacencyMatrix = Adjacency;
 fig=figure(1);
-filename = 'diffusionAlgorithm.gif';
+filename = './figures/diffusionAlgorithm.gif';
 plotNetworkTopology(1, AgentSet, w0, AdjacencyMatrix, group1, group2, attackers, attackers_new, numTaps);
 %title('F = 5');
 drawnow
@@ -85,6 +90,10 @@ d = d+v;
 %% DIFFUSION LMS ALGORITHM
 for n = numTaps : numPoints
     
+    %if n > 2000
+    %    attackers = [24 37 63 68];
+    %    normalAgents = setdiff(Agents,attackers);
+    %end
     
     newAdjacency = Adjacency;
 
@@ -130,12 +139,17 @@ for n = numTaps : numPoints
     %gamma2 = UpdateGamma2(normalAgents, attackers, attacker_phi, numAgents, gamma2, Adjacency, w_noco_old, w_noco, niu);
     %gamma2 = UpdateGamma2(normalAgents, attackers, attacker_phi, numAgents, gamma2, Adjacency, w_noco_old, phi_noco, niu);
     
+    %% R-DLMSAW starts, select F
+    F = 1;
     if n >numTaps
-        [newAdjacency,ratio,J] = removeLargestRatio(n, 5, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
-    Expectation_noco, Expectation_coop, gamma2 );
+      %  [newAdjacency,ratio,J] = removeLargestRatio(n, 1, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+  %  Expectation_noco, Expectation_coop, gamma2 );
         %[newAdjacency, J] = removeLargestCostOfRemainingNeighbors(0.01, 3, gamma2, AdjacencyMatrix, newAdjacency, numAgents, attackers, D, U, phi, storedNum, attacker_phi);
+    [newAdjacency,ratio,J] = removeLargest_new_resilient(n, F, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+                Expectation_noco, Expectation_coop, gamma2 );
     end
     
+    %% R-DLMSAW ends
     A = UpdateWeight(normalAgents, numAgents, gamma2, newAdjacency);
     w = UpdateW(attackers, numAgents, A, w,  phi, attacker_phi, w0_attacker);
     
@@ -145,7 +159,8 @@ for n = numTaps : numPoints
     end
     
     [MSD_coop, MSD_ncop] = ComputeMSD(group1, numAgents, attackers, MSD_coop, MSD_ncop, n, w0, w, w_noco, normalAgents);
-    
+    W1(n,:) = w(1,:);
+    W2(n,:) = w(2,:);
     [D, U] = updateStoredStreamingData(d(n,:),u, D, U);
     %Expectation_noco = Expectation(n, numAgents, Expectation_noco, D, U, w_noco, storedNum);
     %Expectation_coop = Expectation(n, numAgents, Expectation_coop, D, U, w, storedNum);
@@ -169,22 +184,69 @@ hold on;
 plot(mag2db(MSD_coop), 'linewidth',1);
 hold on;
 set(gca,'FontSize',15);
-gca = legend('Noncooperative LMS','DLMSAW', 'interpreter','latex', 'fontsize',20);
-set(gca,'FontSize',20);
+L = legend('Noncooperative LMS','DLMSAW', 'interpreter','latex', 'fontsize',20);
+set(L,'FontSize',20);
 xlabel('Iteration $i$', 'interpreter','latex','fontsize',20);ylabel('MSD(dB)', 'interpreter','latex','fontsize',20);
 box on;
 
-% figure(3);
-% set (gcf,'Position',[0,0,450,450], 'color','w');
-% for i = 1:numPoints-1
-%     delta(i) = norm(w0_attacker - wAverageMatrix(:,i));
-% end
-% plot(delta,'linewidth',2);
-% 
-% set(gca,'FontSize',15);
-% set(gcf,'color','white');
-% xlabel('Iteration $i$','Interpreter','LaTex','FontSize',20);
-% ylabel('$\|w_k^a - \bar{w}_{k,i}\|$','Interpreter','LaTex','FontSize',20);
+figure(3)
+set (gcf,'Position',[0,0,450,450], 'color','w');
+set(gcf,'color','white');
+%set(gca,'XTick', [0:1000:5000])
+bl = plot(W1(:,setdiff(group1,attackers)), 'color','b','linewidth',1);
+hold on;
+gr = plot(W1(:,setdiff(group2,attackers)), 'color','g','linewidth',1);
+hold on;
+line([0,5000],[0.9,0.9],'linestyle',':', 'color', 'm','linewidth',2);
+hold on;
+line([0,5000],[0.1,0.1],'linestyle',':', 'color', 'm','linewidth',2);
+hold on;
+set(gca,'TickLabelInterpreter','latex','FontSize',15);
+if ~isempty(attackers)
+    neighbor_attacker = [78,97,99,72,52,98,14,89,54,26,47,23,25,13,53,34,15,27,36,35,64,79,73,38,68,74,62,87,48,77,61,46,33];
+    re = plot(W1(:,neighbor_attacker), 'color','r','linewidth',1);
+    L = legend([bl(1), gr(1), re(1)],'Blue nodes','Green nodes', 'Attacked nodes', 'interpreter','latex', 'fontsize',22, 'Location', 'Best');
+else
+    L = legend([bl(1), gr(1)],'Blue nodes','Green nodes', 'interpreter','latex', 'fontsize',22, 'Location', 'Best');
+end
+ylim([0,1]);
+xlabel('Iteration $i$', 'interpreter','latex','fontsize',25);ylabel('State $w_{k,i}(1)$', 'interpreter','latex','fontsize',25);
+box on;
+
+figure(4)
+set (gcf,'Position',[0,0,450,450], 'color','w');
+set(gcf,'color','white');
+%set(gca,'XTick', [0:1000:5000])
+bl = plot(W2(:,setdiff(group1,attackers)), 'color','b','linewidth',1);
+hold on;
+gr = plot(W2(:,setdiff(group2,attackers)), 'color','g','linewidth',1);
+hold on;
+line([0,5000],[0.9,0.9],'linestyle',':', 'color', 'm','linewidth',2);
+hold on;
+line([0,5000],[0.1,0.1],'linestyle',':', 'color', 'm','linewidth',2);
+hold on;
+set(gca,'TickLabelInterpreter','latex', 'FontSize',15);
+if ~isempty(attackers)
+    neighbor_attacker = [78,97,99,72,52,98,14,89,54,26,47,23,25,13,53,34,15,27,36,35,64,79,73,38,68,74,62,87,48,77,61,46,33];
+    re = plot(W2(:,neighbor_attacker), 'color','r','linewidth',1);
+    L = legend([bl(1), gr(1), re(1)],'Blue nodes','Green nodes', 'Attacked nodes', 'interpreter','latex', 'fontsize',22, 'Location', 'Best');
+else
+    L = legend([bl(1), gr(1)],'Blue nodes','Green nodes', 'interpreter','latex', 'fontsize',22, 'Location', 'Best');
+end
+xlabel('Iteration $i$', 'interpreter','latex','fontsize',25);ylabel('State $w_{k,i}(2)$', 'interpreter','latex','fontsize',25);
+ylim([0,1]);
+box on;
+
+figure(5);
+set (gcf,'Position',[0,0,450,450], 'color','w');
+set(gcf,'color','white');
+for i = 1:numPoints-1
+    delta(i) = norm(w0_attacker - wAverageMatrix(:,i));
+end
+plot(delta,'linewidth',2);
+set(gca,'TickLabelInterpreter','latex', 'FontSize',15);
+xlabel('Iteration $i$','Interpreter','LaTex','FontSize',25);
+ylabel('$\|w_k^a - \bar{w}_{k,i}\|$','Interpreter','LaTex','FontSize',25);
 
 % Expectation
 % figure(3)

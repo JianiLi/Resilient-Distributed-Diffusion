@@ -9,7 +9,7 @@ rng('default');
 numAgents = 16;
 numTaps = 2;		% channel number
 %numPoints = 5050;
-numPoints = 10500;
+numPoints = 5000;
 Mu = 0.01;          % step size
 niu = 0.02;         % forgetting factor
 w = rand(numTaps,numAgents);
@@ -18,11 +18,13 @@ w0 = [0.1 0.9; 0.1 0.9];
 phi = zeros(numTaps,numAgents);
 gamma2 = zeros(numAgents,numAgents);
 A = zeros(numAgents,numAgents);
-sensingRange = 1;
+sensingRange = 0.6;
 
 %% DETECTION PARAMETERS 
 MSD_coop = zeros(numPoints-1,1); 
 MSD_ncop = zeros(numPoints-1,1);
+W1 = zeros(numPoints-1,numAgents);
+W2 = zeros(numPoints-1,numAgents);
 storedNum = 100;
 D = zeros(storedNum, numAgents);
 U = zeros(storedNum,numTaps, numAgents);
@@ -35,26 +37,26 @@ beta = 0.1;
 
 %% ATTACKER SETTINGS
 %attackers = [24 37 63 88];
-attackers = [6 11];
+attackers = [  6 11];
 %attackers = [6 11];
 %attackers = [12 14 17 32 36 39 63 66 68 82 85 88 ];
 attackers_new = [];
 ra = 0.0005;
 attacker_phi = zeros(numTaps, numAgents);
-w0_attacker = [0.5;0.5];          % attacker's goal state
+w0_attacker = [0.2;0.2];          % attacker's goal state
 Agents = 1:numAgents;
 normalAgents = setdiff(Agents,attackers);
 wAverageMatrix = [];
 
 %% INPUTS (GAUSSIAN)
 mu_x = 0;
-sigma_x2 = 0.3 + 0.0*rand(numAgents,1);
+sigma_x2 = 0.3 + 0.15*rand(numAgents,1);
 x = zeros(numPoints,numAgents);
 for k = 1:numAgents
     x(:,k) = mvnrnd(mu_x, sigma_x2(k), numPoints);
 end
 
-sigma_v2 = 0.15+0.05*rand(numAgents,1);
+sigma_v2 = 0.5+0.05*rand(numAgents,1);
 v = zeros(numPoints,numAgents);
 for k = 1:numAgents
     v(:,k) = mvnrnd(0, sigma_v2(k), numPoints);
@@ -63,7 +65,7 @@ end
 % NETWORK TOPOLOGY
 [Adjacency, AgentSet, group1, group2] = getAdjacency(numAgents, sensingRange);
 AdjacencyMatrix = Adjacency;
-%plotNetworkTopology(1, AgentSet, w0, AdjacencyMatrix, group1, group2, attackers, attackers_new, numTaps);
+plotNetworkTopology(1, AgentSet, w0, AdjacencyMatrix, group1, group2, attackers, attackers_new, numTaps);
 
 d = zeros(numPoints,numAgents);
 for k = group1
@@ -162,8 +164,8 @@ for n = numTaps : numPoints
     if n >numTaps
             %[newAdjacency,ratio,J] = removeLargestRatio(n, 2, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
    % Expectation_noco, Expectation_coop, gamma2 );
-    [newAdjacency,ratio,J] = removeLargest_new_resilient(n, 2, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
-    Expectation_noco, Expectation_coop, gamma2 );
+   % [newAdjacency,ratio,J] = removeLargest_new_resilient(n, 2, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+ %   Expectation_noco, Expectation_coop, gamma2 );
     end
     
     A = UpdateWeight(normalAgents, numAgents, gamma2, newAdjacency);
@@ -176,7 +178,8 @@ for n = numTaps : numPoints
     end
     
     [MSD_coop, MSD_ncop] = ComputeMSD(group1, numAgents, attackers, MSD_coop, MSD_ncop, n, w0, w, w_noco, normalAgents);
-    
+    W1(n,:) = w(1,:);
+    W2(n,:) = w(2,:);
     [D, U] = updateStoredStreamingData(d(n,:),u, D, U);
     wAverageMatrix = getwAverage(numAgents, wAverageMatrix, attackers, Adjacency, w);    
 end
@@ -201,10 +204,60 @@ box on;
 figure(3)
 %plot(error_node1(1,:))
 %hold on;
+set (gcf,'Position',[0,0,450,450], 'color','w');
+set(gcf,'color','white');
 line_color = hsv(numAgents);
-for k = Agents
-    plot(difference_error_A_with_error(:,k,1),'Color', line_color(k,:))
+for k = setdiff(group1,attackers)
+    g1 = plot(difference_error_A_with_error(:,k,1),'Color', 'b','linewidth',1);
     hold on;
-    mylgd{k} = ['error', num2str(k)];    
 end
-legend(mylgd);
+for k = setdiff(group2,attackers)
+    g2 = plot(difference_error_A_with_error(:,k,1),'Color', 'g','linewidth',1);
+    hold on;
+end
+legend([g1(1),g2(1)],'Blue nodes','Green nodes', 'interpreter','latex', 'fontsize',20);
+xlim([500 5000])
+xlabel('Iteration $i$', 'interpreter','latex','fontsize',20);ylabel('$$|\hat{\boldmath{w}}_{k,i} - \boldmath{w}_{k,i}|$$', 'interpreter','latex','fontsize',22);
+box on;
+
+figure(4)
+set (gcf,'Position',[0,0,450,450], 'color','w');
+set(gcf,'color','white');
+%set(gca,'XTick', [0:1000:5000])
+bl = plot(W1(:,setdiff(group1,attackers)), 'color','b','linewidth',1);
+hold on;
+gr = plot(W1(:,setdiff(group2,attackers)), 'color','g','linewidth',1);
+hold on;
+line([0,5000],[0.9,0.9],'linestyle',':', 'color', 'm','linewidth',2);
+hold on;
+if ~isempty(attackers)
+    line([0,5000],[0.2,0.2],'linestyle',':', 'color', 'm','linewidth',2);
+else
+    line([0,5000],[0.1,0.1],'linestyle',':', 'color', 'm','linewidth',2);
+end
+gca = legend([bl(1), gr(1)],'Blue nodes','Green nodes', 'interpreter','latex', 'fontsize',20);
+set(gca,'FontSize',15);
+ylim([0,1]);
+xlabel('Iteration $i$', 'interpreter','latex','fontsize',20);ylabel('State $w_{k,i}(1)$', 'interpreter','latex','fontsize',20);
+box on;
+
+figure(5)
+set (gcf,'Position',[0,0,450,450], 'color','w');
+set(gcf,'color','white');
+%set(gca,'XTick', [0:1000:5000])
+bl = plot(W2(:,setdiff(group1,attackers)), 'color','b','linewidth',1);
+hold on;
+gr = plot(W2(:,setdiff(group2,attackers)), 'color','g','linewidth',1);
+hold on;
+line([0,5000],[0.9,0.9],'linestyle',':', 'color', 'm','linewidth',2);
+hold on;
+if ~isempty(attackers)
+    line([0,5000],[0.2,0.2],'linestyle',':', 'color', 'm','linewidth',2);
+else
+    line([0,5000],[0.1,0.1],'linestyle',':', 'color', 'm','linewidth',2);
+end
+gca = legend([bl(1), gr(1)],'Blue nodes','Green nodes', 'interpreter','latex', 'fontsize',20);
+set(gca,'FontSize',15);
+xlabel('Iteration $i$', 'interpreter','latex','fontsize',20);ylabel('State $w_{k,i}(2)$', 'interpreter','latex','fontsize',20);
+ylim([0,1]);
+box on;

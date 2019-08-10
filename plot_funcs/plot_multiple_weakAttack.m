@@ -1,18 +1,21 @@
-% Test black-box attack: attacker does not know the streaming data
-% information, by communication message of the target node and its
-% neighbors, the attacker calculates the state
- clear; close all; clc
-    rng('default');  
-
-for iteration = 1:4
+clear;close all; clc
+numF = 1;
+for F = -1:1:numF
+    %for algorithm = 1:2
+%         if algorithm == 2 && (F == -1 || F == 0)
+%             continue
+%         end
     
+            
+    rng('default');
+
     %% PARAMETERS
     numAgents = 100;
     numTaps = 2;		% channel number
-    %numPoints = 5050;
+    %numPoints = 2005;
     numPoints = 5000;
     Mu = 0.01;          % step size
-    niu = 0.01;         % forgetting factor
+    niu = 0.02;         % forgetting factor
     w = rand(numTaps,numAgents);
     w_noco = w;
     w0 = [0.1 0.9; 0.1 0.9];
@@ -21,7 +24,7 @@ for iteration = 1:4
     A = zeros(numAgents,numAgents);
     sensingRange = 0.16;
 
-    %% DETECTION PARAMETERS 
+    %% DETECTION PARAMETERS
     MSD_coop = zeros(numPoints-1,1); 
     MSD_ncop = zeros(numPoints-1,1);
     difference_w = zeros(numPoints-1,numAgents);
@@ -37,18 +40,14 @@ for iteration = 1:4
 
     %% ATTACKER SETTINGS
     %attackers = [24 37 63 88];
-    %attackers = [];
-    if iteration == 1
+    if F == -1
         attackers = [];
     else
-        attackers = [24 37 33 42 63 88];
-        %attackers = [2 11 24 33 37 53 63 88];
-        %attackers = [24 37 63 88];
+        attackers = [24 37 63 88];
     end
-    %attackers = [2 11 24 33 35 37 53 55 63 88];
-    %attackers = [12 14 17 32 36 39 63 66 68 82 85 88 ];
     attackers_new = [];
-    ra = 0.001;
+    ra = 0.002;
+    mu_A = 0.002;
     attacker_phi = zeros(numTaps, numAgents);
     w0_attacker = [0.5;0.5];          % attacker's goal state
     Agents = 1:numAgents;
@@ -57,13 +56,13 @@ for iteration = 1:4
 
     %% INPUTS (GAUSSIAN)
     mu_x = 0;
-    sigma_x2 = 0.8 + 0.4*rand(numAgents,1);
+    sigma_x2 = 0.8 + 0.05*rand(numAgents,1);
     x = zeros(numPoints,numAgents);
     for k = 1:numAgents
         x(:,k) = mvnrnd(mu_x, sigma_x2(k), numPoints);
     end
 
-    sigma_v2 = 0.0+0.05*rand(numAgents,1);
+    sigma_v2 = 0.8+0.05*rand(numAgents,1);
     v = zeros(numPoints,numAgents);
     for k = 1:numAgents
         v(:,k) = mvnrnd(0, sigma_v2(k), numPoints);
@@ -71,9 +70,10 @@ for iteration = 1:4
 
     % NETWORK TOPOLOGY
     [Adjacency, AgentSet, group1, group2] = getAdjacency(numAgents, sensingRange);
+    group1(group1==54)=[];
+    group2 = [group2,54];
     AdjacencyMatrix = Adjacency;
     %plotNetworkTopology(1, AgentSet, w0, AdjacencyMatrix, group1, group2, attackers, attackers_new, numTaps);
-    %pause(1)
 
     d = zeros(numPoints,numAgents);
     for k = group1
@@ -83,11 +83,7 @@ for iteration = 1:4
         d(:,k) = filter(w0(:,2), 1, x(:,k));
     end
     d = d+v;
-
-    %estimated_A = zeros(numAgents,numAgents);
-    %estimated_A_bef_norm = estimated_A;
-    %error_A = zeros(numTaps,numAgents);
-
+    
     estimated_A = cell(1,numAgents);
     sz = zeros(numAgents,1);
     for k = normalAgents
@@ -103,24 +99,22 @@ for iteration = 1:4
     %% DIFFUSION LMS ALGORITHM
     for n = numTaps : numPoints
         n
+        
         newAdjacency = Adjacency;
 
         if mod(n,1000) == 0 || n == numPoints
             %update adjacency matrix
             AdjacencyMatrix = (A>=0.01) & Adjacency;
             %plotNetworkTopology(n, AgentSet, w0, AdjacencyMatrix, group1, group2, attackers, attackers_new, numTaps)
-            %pause(1)
         end
 
-    %     if size(attackers,2) ~= 0
-    %        for k = normalAgents
-    %            attacker_phi(1,:,k) = w(:,k) + ra(1)*(w0_attacker-w(:,k));
-    %            attacker_phi(2,:,k) = w(:,k) + ra(2)*(w0_attacker-w(:,k));
-    %        end
-    %     end
+%         if size(attackers,2) ~= 0
+%             for k = normalAgents
+%                 attacker_phi(:,k) = w(:,k) + ra(1)*(w0_attacker-w(:,k));    
+%             end
+%         end
 
         phi_last_iter = phi;
-
 
         for k = normalAgents
             u(:,k) = x(n:-1:n-numTaps+1,k);     % select part of training input
@@ -137,21 +131,18 @@ for iteration = 1:4
             phi_noco(:,k) = w_noco(:,k);
         end
 
-        % attack on node 1. neighbor of node 1: 1, 2, 3, 11, 12
-        %error_A = phi(:,1) - phi(:,[1, 2, 3, 11, 12]) * estimated_A;
-        %estimated_A_bef_norm = estimated_A + 0.02*(phi(:,[1, 2, 3, 11, 12])'*error_A);
-        %estimated_A = estimated_A_bef_norm / sum(estimated_A_bef_norm);
-
-        for k = normalAgents
-            for a = attackers
-                phi_last_iter(:,a) = attacker_phi(:,k);
+        %if n > 1000
+            for k = normalAgents
+                for a = attackers
+                    phi_last_iter(:,a) = attacker_phi(:,k);
+                end
+                error_A(n,k,:) = phi(:,k) - phi_last_iter(:, [find(Adjacency(:,k)==1)]) * cell2mat(estimated_A(:,k));
+                difference_error_A_with_error(n,k,:) = error(n,k,: ) - error_A(n,k,:);
+                estimated_A_bef_norm = cell2mat(estimated_A(:,k)) + mu_A *phi_last_iter(:, [find(Adjacency(:,k)==1)])'*reshape(error_A(n,k,:),2,1);
+                estimated_A_bef_norm([find(estimated_A_bef_norm < 0)]) = 0;
+                estimated_A(:,k) = mat2cell( estimated_A_bef_norm/sum(estimated_A_bef_norm), sz(k), 1);
             end
-            error_A(n,k,:) = phi(:,k) - phi_last_iter(:, [find(Adjacency(:,k)==1)]) * cell2mat(estimated_A(:,k));
-            difference_error_A_with_error(n,k,:) = error(n,k,:) - error_A(n,k,:);
-            estimated_A_bef_norm = cell2mat(estimated_A(:,k)) + 0.01*phi_last_iter(:, [find(Adjacency(:,k)==1)])'*reshape(error_A(n,k,:),2,1);
-            estimated_A_bef_norm([find(estimated_A_bef_norm < 0)]) = 0;
-            estimated_A(:,k) = mat2cell( estimated_A_bef_norm/sum(estimated_A_bef_norm), sz(k), 1);
-        end
+        %end
 
         if size(attackers,2) ~= 0
            for k = normalAgents
@@ -164,20 +155,22 @@ for iteration = 1:4
         end
 
         gamma2 = UpdateGamma2(normalAgents, attackers, attacker_phi, numAgents, gamma2, newAdjacency, w, phi, niu);
+        
 
-         if n >numTaps
-             if iteration == 3
-                [newAdjacency,ratio,J] = removeLargestRatio(n, 2, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+        if F > -1
+            if n >numTaps
+%                 if algorithm == 1
+%                 [   newAdjacency,ratio,J] = removeLargestRatio(n, F, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
+%                 Expectation_noco, Expectation_coop, gamma2 );
+%                 else
+                    [newAdjacency,ratio,J] = removeLargest_new_resilient(n, F, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
                 Expectation_noco, Expectation_coop, gamma2 );
-             elseif iteration == 4
-                [newAdjacency,ratio,J] = removeLargest_new_resilient(n, 2, newAdjacency, numAgents, Adjacency, attackers, D, U, phi, storedNum, attacker_phi, ...
-                Expectation_noco, Expectation_coop, gamma2 );
-             end
-         end
+            end
+%             end
+        end
 
         A = UpdateWeight(normalAgents, numAgents, gamma2, newAdjacency);
         w = UpdateW(attackers, numAgents, A, w,  phi, attacker_phi, w0_attacker);
-
 
         % update attackers
         if n > 1000
@@ -187,59 +180,77 @@ for iteration = 1:4
         [MSD_coop, MSD_ncop] = ComputeMSD(group1, numAgents, attackers, MSD_coop, MSD_ncop, n, w0, w, w_noco, normalAgents);
 
         [D, U] = updateStoredStreamingData(d(n,:),u, D, U);
-        wAverageMatrix = getwAverage(numAgents, wAverageMatrix, attackers, Adjacency, w); 
-
+        %Expectation_noco = Expectation(n, numAgents, Expectation_noco, D, U, w_noco, storedNum);
+        %Expectation_coop = Expectation(n, numAgents, Expectation_coop, D, U, w, storedNum);
+        wAverageMatrix = getwAverage(numAgents, wAverageMatrix, attackers, Adjacency, w);
     end
 
     %% PLOT
     % MSD
     %figure(2)
-    if iteration == 1
-        set(gcf,'Position',[0,0,450,450], 'color','w');
-        set(gcf,'color','white');
+    drawnow;
+    if F == -1
+        set (gcf,'Position',[0,0,450,450], 'color','w');
         set(gca,'XTick', [0:1000:5000])
         plot(mag2db(MSD_ncop), 'linewidth',1);
         hold on;
+        mylgd{1} = ['Noncooperative LMS (under attack)'];
         plot(mag2db(MSD_coop), 'linewidth',1);
         hold on;
-    else
+        mylgd{2} = ['DLMSAW (no attack)'];
+    elseif F == 0
         plot(mag2db(MSD_coop), 'linewidth',1);
         hold on;
-    end
-    if iteration == 4
-        set(gca,'FontSize',15);
-        L = legend('Noncooperative LMS','DLMSAW (no attack)', 'DLMSAW (under attack)', ...
-        'R-DLMSAW', 'general R-DLMSAW');
-       % L = legend('Noncooperative LMS','DLMSAW (no attack)','Noncooperative LMS', 'DLMSAW (under attack)', ...
-       % 'Noncooperative LMS', 'R-DLMSAW', 'Noncooperative LMS', 'general R-DLMSAW');
-        set(L,'Interpreter','latex')
-        set(L,'FontSize',20);
-        xlabel('Iteration $i$', 'interpreter','latex','fontsize',20);ylabel('MSD(dB)', 'interpreter','latex','fontsize',20);
-        box on;
-    end
-
-    % figure(3)
-    % %plot(error_node1(1,:))
-    % %hold on;
-    % for k = Agents
-    %     plot(difference_error_A_with_error(:,k,1))
-    %     hold on;
-    %     mylgd{k} = ['error', num2str(k)];
-    % end
-    % legend(mylgd);
-
-    if iteration == 4
-        figure(4)
-        set(gcf,'Position',[0,0,450,450], 'color','w');
-        set(gcf,'color','white');
-        set(gca,'XTick', [0:1000:5000])
-        H = plot(difference_w, 'linewidth',1);
+        mylgd{3} = ['DLMSAW (under attack)'];
+    else 
+%         if algorithm == 1
+%             plot(mag2db(MSD_coop),'linewidth',1, 'Color', [0.2,0.5+0.1*F,0.2+0.1*F]);
+%             mylgd{2*F+1+algorithm} = ['R-DLMSAW, F = ', num2str(F)];
+%         else
+            plot(mag2db(MSD_coop), 'linewidth',1);
+            mylgd{F+3} = ['R-DLMSAW, F = ', num2str(F), '(under attack)'];
+%         end
         hold on;
-        set(gca,'FontSize',15);
-        %L = legend(H,'all normal agents');
+        set(gca,'TickLabelInterpreter','latex','FontSize',15);
+    end
+    if F == numF %&& algorithm == 2
+        L = legend(mylgd);
         set(L,'Interpreter','latex')
-        set(L,'FontSize',18);
-        xlabel('Iteration $i$', 'interpreter','latex','fontsize',20);ylabel('$$|\hat{\boldmath{w}}_{k,i} - \boldmath{w}_{k,i}|$$', 'interpreter','latex','fontsize',22);
+        set(L,'FontSize',17);
+        xlabel('Iteration $i$', 'interpreter','latex','fontsize',25);ylabel('MSD(dB)', 'interpreter','latex','fontsize',25);
         box on;
-    end  
+    end
+%     end
 end
+
+% figure(3);
+% set (gcf,'Position',[0,0,450,450], 'color','w');
+% for i = 1:numPoints-1
+%     delta(i) = norm(w0_attacker - wAverageMatrix(:,i));
+% end
+% plot(delta,'linewidth',2);
+% 
+% set(gca,'FontSize',15);
+% set(gcf,'color','white');
+% xlabel('Iteration $i$','Interpreter','LaTex','FontSize',20);
+% ylabel('$\|w_k^a - \bar{w}_{k,i}\|$','Interpreter','LaTex','FontSize',20);
+
+% Expectation
+% figure(3)
+% plot(Expectation_noco(:,14), 'linewidth',1);
+% hold on;
+% plot(Expectation_coop(:,14), 'linewidth',1);
+% set(gcf,'color','white');
+% set(gca,'FontSize',15);
+% xlabel('Iteration i');ylabel('Expectation');
+% box on;
+% legend('Noncooperative LMS','Distributed clustering');
+% 
+% % Expectation difference
+% figure(4)
+% E = Expectation_noco - Expectation_coop;
+% plot(E, 'linewidth',1);
+% set(gcf,'color','white');
+% set(gca,'FontSize',15);
+% xlabel('Iteration i');ylabel('Expectation difference');
+% box on;

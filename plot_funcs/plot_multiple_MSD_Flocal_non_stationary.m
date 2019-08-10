@@ -8,7 +8,7 @@ for F = 0:1:numF
     wAverageMatrix = [];
 
 %for eta = 0:0.005:0.2
-    numPoints = 5000;
+    numPoints = 5004;
     numTaps = 2;
     Mu = 0.01;
     numAgents = 100;
@@ -162,9 +162,11 @@ for F = 0:1:numF
         end
         
         if n >numTaps
-                [newAdjacency,ratio,J] = removeLargestRatio(n, F, newAdjacency, numAgents, Adjacency, attacker, D, U, phi, storedNum, attacker_phi, ...
-        Expectation_noco, Expectation_coop, gamma2 );
+             %   [newAdjacency,ratio,J] = removeLargestRatio(n, F, newAdjacency, numAgents, Adjacency, attacker, D, U, phi, storedNum, attacker_phi, ...
+    %    Expectation_noco, Expectation_coop, gamma2 );
             %[newAdjacency, J] = removeLargestCostOfRemainingNeighbors(0.01, 3, gamma2, AdjacencyMatrix, newAdjacency, numAgents, attacker, D, U, phi, storedNum, attacker_phi);
+       [newAdjacency,ratio,J] = removeLargest_new_resilient(n, F, newAdjacency, numAgents, Adjacency, attacker, D, U, phi, storedNum, attacker_phi, ...
+                Expectation_noco, Expectation_coop, gamma2 );
         end
 
         A = zeros(numAgents,numAgents);
@@ -289,10 +291,13 @@ for F = 0:1:numF
         set(gca,'FontSize',15);
         mylgd{F+2} = ['R-DLMSAW, F = ', num2str(F)];
     end
+    set(gca,'XTick', [0:1000:5000])
+    xlim([0 5000])
+    set(gca,'TickLabelInterpreter','latex', 'FontSize',15);
     if F == numF
-        gca = legend(mylgd,'NorthEastOutside');
-        set(gca,'FontSize',12);
-        xlabel('Iteration $i$', 'interpreter','latex','fontsize',20);ylabel('MSD(dB)', 'interpreter','latex','fontsize',20);
+        L = legend(mylgd,'interpreter','latex');
+        set(L,'FontSize',15);
+        xlabel('Iteration $i$', 'interpreter','latex','fontsize',25);ylabel('MSD(dB)', 'interpreter','latex','fontsize',25);
         box on;
     end
 end
