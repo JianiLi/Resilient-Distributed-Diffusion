@@ -20,6 +20,7 @@ We recommend to start with the case of strong attack with stationary targets. An
 ```
 
 ## Cite the paper
+```
 @ARTICLE{8926533,  
   author={J. {Li} and W. {Abbas} and X. {Koutsoukos}},  
   journal={IEEE Transactions on Signal and Information Processing over Networks},   
@@ -34,5 +35,6 @@ We recommend to start with the case of strong attack with stationary targets. An
   title={Resilient Distributed Diffusion for Multi-task Estimation},   
   year={2018},    
   pages={93-102},}  
+```
   
  
